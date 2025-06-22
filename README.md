@@ -22,3 +22,18 @@ Numerical simulations and chapter-wise implementation inspired by *Gravitational
 pip install -r requirements.txt 
 ```
 
+---
+
+## Steps to Create the GitHub Repo
+
+1. Go to [https://github.com](https://github.com)
+2. Click **New repository**
+3. Name: `gravitational-few-body-dynamics`
+4. Description: *Simulations and notes based on Seppo Mikkola’s Few-Body Dynamics book*
+5. Make it **public**
+6. Check ✅ "Add a README"
+7. Click **Create repository**
+8. Clone to your system:
+   ```bash
+   git clone https://github.com/yourusername/gravitational-few-body-dynamics.git
+
