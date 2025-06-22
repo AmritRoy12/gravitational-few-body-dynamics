@@ -19,4 +19,6 @@ Numerical simulations and chapter-wise implementation inspired by *Gravitational
 
 ## Getting Started
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt 
+```
+
