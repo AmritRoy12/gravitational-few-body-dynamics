@@ -1,0 +1,10 @@
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
+jupyterlab>=4.0
+notebook>=7.0
+sympy>=1.12
+
+tqdm               # For progress bars in loops
+plotly             # For interactive 3D orbit plots
+pandas             # For tabular data (if you analyze logs/output)
