@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lagrange Points & Halo Orbits Simulation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c1e 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        
+        .main-view {
+            flex: 1;
+            position: relative;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .control-group h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #4facfe;
+            font-weight: 600;
+        }
+        
+        .control {
+            margin-bottom: 12px;
+        }
+        
+        .control label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(79, 172, 254, 0.3);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 10px rgba(79, 172, 254, 0.3);
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px 5px 5px 0;
+            font-size: 12px;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+        
+        .button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px;
+            max-width: 300px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 50;
+        }
+        
+        .info-panel h4 {
+            color: #4facfe;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .info-panel p {
+            font-size: 12px;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        
+        .lagrange-legend {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 11px;
+        }
+        
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(79, 172, 254, 0.3);
+            border-top: 3px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .scenario-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .value-display {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
+            margin-top: 4px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div>Initializing Celestial Mechanics...</div>
+    </div>
+    
+    <div class="container" style="display: none;" id="main-container">
+        <div class="sidebar">
+            <div class="title">Lagrange Points</div>
+            <div class="subtitle">Interactive simulation of gravitational equilibrium points and halo orbits in the circular restricted three-body problem</div>
+            
+            <div class="control-group">
+                <h3>🌍 System Configuration</h3>
+                <div class="scenario-buttons">
+                    <button class="button" onclick="setScenario('earth-moon')">Earth-Moon</button>
+                    <button class="button" onclick="setScenario('sun-earth')">Sun-Earth</button>
+                </div>
+                <div class="control">
+                    <label>Mass Ratio (μ): <span id="mass-ratio-value">0.012</span></label>
+                    <input type="range" class="slider" id="mass-ratio" min="0.001" max="0.5" step="0.001" value="0.012">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>🛰️ Spacecraft Controls</h3>
+                <div class="control">
+                    <label>Animation Speed</label>
+                    <input type="range" class="slider" id="speed" min="0.1" max="5" step="0.1" value="1">
+                </div>
+                <div class="control">
+                    <label>Halo Orbit Amplitude</label>
+                    <input type="range" class="slider" id="halo-amplitude" min="0.01" max="0.3" step="0.01" value="0.1">
+                </div>
+                <div class="control">
+                    <label>Number of Spacecraft</label>
+                    <input type="range" class="slider" id="num-spacecraft" min="1" max="10" step="1" value="3">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>👁️ Visualization</h3>
+                <button class="button" onclick="toggleOrbits()">Toggle Orbit Trails</button>
+                <button class="button secondary" onclick="toggleLagrangePoints()">Toggle L-Points</button>
+                <button class="button secondary" onclick="resetView()">Reset Camera</button>
+                <button class="button secondary" onclick="toggleAnimation()">⏯️ Pause/Play</button>
+            </div>
+            
+            <div class="lagrange-legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff6b6b;"></div>
+                    L1 (Between)
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #4ecdc4;"></div>
+                    L2 (Beyond)
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #45b7d1;"></div>
+                    L3 (Opposite)
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #96ceb4;"></div>
+                    L4 (Leading)
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ffeaa7;"></div>
+                    L5 (Trailing)
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #fd79a8;"></div>
+                    Halo Orbit
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-view">
+            <div id="canvas-container"></div>
+            
+            <div class="info-panel">
+                <h4 id="info-title">Lagrange Points</h4>
+                <p id="info-content">
+                    Lagrange points are positions in space where gravitational forces create equilibrium for small objects. The James Webb Space Telescope orbits around L2!
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let scene, camera, renderer, controls;
+        let primaryMass, secondaryMass;
+        let lagrangePoints = [];
+        let spacecraft = [];
+        let orbits = [];
+        let animationSpeed = 1;
+        let showOrbits = true;
+        let showLagrangePoints = true;
+        let isAnimating = true;
+        let time = 0;
+        
+        // System parameters
+        let mu = 0.012; // Earth-Moon mass ratio
+        let systemScale = 2; // Scaling factor for visualization
+        
+        // Colors for Lagrange points
+        const lagrangeColors = {
+            L1: 0xff6b6b,
+            L2: 0x4ecdc4,
+            L3: 0x45b7d1,
+            L4: 0x96ceb4,
+            L5: 0xffeaa7
+        };
+        
+        // Initialize the simulation
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000011);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 3, 5);
+            
+            // Create renderer
+            const container = document.getElementById('canvas-container');
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 5, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Add stars
+            addStars();
+            
+            // Create masses
+            createMasses();
+            
+            // Calculate and create Lagrange points
+            calculateLagrangePoints();
+            
+            // Create spacecraft
+            createSpacecraft();
+            
+            // Setup controls
+            setupControls();
+            
+            // Start animation
+            animate();
+            
+            // Hide loading screen
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('main-container').style.display = 'flex';
+        }
+        
+        function addStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 1 });
+            
+            const starsVertices = [];
+            for (let i = 0; i < 1000; i++) {
+                const x = (Math.random() - 0.5) * 200;
+                const y = (Math.random() - 0.5) * 200;
+                const z = (Math.random() - 0.5) * 200;
+                starsVertices.push(x, y, z);
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+        }
+        
+        function createMasses() {
+            // Remove existing masses
+            if (primaryMass) scene.remove(primaryMass);
+            if (secondaryMass) scene.remove(secondaryMass);
+            
+            // Primary mass (larger)
+            const primaryGeometry = new THREE.SphereGeometry(0.15 * systemScale, 32, 32);
+            const primaryMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4facfe,
+                emissive: 0x112244,
+                shininess: 100
+            });
+            primaryMass = new THREE.Mesh(primaryGeometry, primaryMaterial);
+            primaryMass.position.set(-mu * systemScale, 0, 0);
+            primaryMass.castShadow = true;
+            scene.add(primaryMass);
+            
+            // Secondary mass (smaller)
+            const secondaryGeometry = new THREE.SphereGeometry(0.08 * systemScale, 32, 32);
+            const secondaryMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xffffff,
+                emissive: 0x222222,
+                shininess: 100
+            });
+            secondaryMass = new THREE.Mesh(secondaryGeometry, secondaryMaterial);
+            secondaryMass.position.set((1 - mu) * systemScale, 0, 0);
+            secondaryMass.castShadow = true;
+            scene.add(secondaryMass);
+        }
+        
+        function calculateLagrangePoints() {
+            // Clear existing Lagrange points
+            lagrangePoints.forEach(point => scene.remove(point));
+            lagrangePoints = [];
+            
+            if (!showLagrangePoints) return;
+            
+            // L1: Between the masses
+            const L1_x = (1 - mu - Math.pow(mu/3, 1/3)) * systemScale;
+            
+            // L2: Beyond the secondary mass
+            const L2_x = (1 - mu + Math.pow(mu/3, 1/3)) * systemScale;
+            
+            // L3: Opposite side of primary mass
+            const L3_x = (-mu - 1 + 5*mu/12) * systemScale;
+            
+            // L4 and L5: Equilateral triangle points
+            const L4_x = (0.5 - mu) * systemScale;
+            const L4_y = Math.sqrt(3)/2 * systemScale;
+            const L5_x = (0.5 - mu) * systemScale;
+            const L5_y = -Math.sqrt(3)/2 * systemScale;
+            
+            const points = [
+                { name: 'L1', x: L1_x, y: 0, z: 0, color: lagrangeColors.L1 },
+                { name: 'L2', x: L2_x, y: 0, z: 0, color: lagrangeColors.L2 },
+                { name: 'L3', x: L3_x, y: 0, z: 0, color: lagrangeColors.L3 },
+                { name: 'L4', x: L4_x, y: L4_y, z: 0, color: lagrangeColors.L4 },
+                { name: 'L5', x: L5_x, y: L5_y, z: 0, color: lagrangeColors.L5 }
+            ];
+            
+            points.forEach(point => {
+                const geometry = new THREE.SphereGeometry(0.03 * systemScale, 16, 16);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: point.color,
+                    emissive: point.color,
+                    emissiveIntensity: 0.3
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(point.x, point.y, point.z);
+                mesh.userData = { name: point.name };
+                scene.add(mesh);
+                lagrangePoints.push(mesh);
+            });
+        }
+        
+        function createSpacecraft() {
+            // Clear existing spacecraft and orbits
+            spacecraft.forEach(craft => scene.remove(craft));
+            orbits.forEach(orbit => scene.remove(orbit));
+            spacecraft = [];
+            orbits = [];
+            
+            const numCraft = parseInt(document.getElementById('num-spacecraft').value);
+            const amplitude = parseFloat(document.getElementById('halo-amplitude').value);
+            
+            for (let i = 0; i < numCraft; i++) {
+                // Create spacecraft
+                const geometry = new THREE.OctahedronGeometry(0.02 * systemScale);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: 0xfd79a8,
+                    emissive: 0x441122,
+                    shininess: 100
+                });
+                const craft = new THREE.Mesh(geometry, material);
+                
+                // Position around L1 or L2
+                const lagrangePoint = i % 2 === 0 ? 'L2' : 'L1';
+                const baseX = lagrangePoint === 'L2' ? 
+                    (1 - mu + Math.pow(mu/3, 1/3)) * systemScale : 
+                    (1 - mu - Math.pow(mu/3, 1/3)) * systemScale;
+                
+                craft.position.set(baseX, 0, 0);
+                craft.userData = { 
+                    lagrangePoint,
+                    phase: (i / numCraft) * Math.PI * 2,
+                    amplitude: amplitude * (0.5 + Math.random() * 0.5)
+                };
+                
+                scene.add(craft);
+                spacecraft.push(craft);
+                
+                // Create orbit trail
+                if (showOrbits) {
+                    const orbitGeometry = new THREE.BufferGeometry();
+                    const orbitMaterial = new THREE.LineBasicMaterial({ 
+                        color: 0xfd79a8,
+                        opacity: 0.6,
+                        transparent: true
+                    });
+                    const orbitLine = new THREE.Line(orbitGeometry, orbitMaterial);
+                    orbitLine.userData = { points: [] };
+                    scene.add(orbitLine);
+                    orbits.push(orbitLine);
+                }
+            }
+        }
+        
+        function setupControls() {
+            // Mass ratio control
+            document.getElementById('mass-ratio').addEventListener('input', (e) => {
+                mu = parseFloat(e.target.value);
+                document.getElementById('mass-ratio-value').textContent = mu.toFixed(3);
+                createMasses();
+                calculateLagrangePoints();
+                createSpacecraft();
+            });
+            
+            // Speed control
+            document.getElementById('speed').addEventListener('input', (e) => {
+                animationSpeed = parseFloat(e.target.value);
+            });
+            
+            // Halo amplitude control
+            document.getElementById('halo-amplitude').addEventListener('input', (e) => {
+                createSpacecraft();
+            });
+            
+            // Number of spacecraft control
+            document.getElementById('num-spacecraft').addEventListener('input', (e) => {
+                createSpacecraft();
+            });
+            
+            // Window resize
+            window.addEventListener('resize', () => {
+                const container = document.getElementById('canvas-container');
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (isAnimating) {
+                time += 0.01 * animationSpeed;
+                
+                // Animate spacecraft in halo orbits
+                spacecraft.forEach((craft, index) => {
+                    const userData = craft.userData;
+                    const lagrangePoint = userData.lagrangePoint;
+                    const phase = userData.phase + time;
+                    const amplitude = userData.amplitude;
+                    
+                    let baseX;
+                    if (lagrangePoint === 'L2') {
+                        baseX = (1 - mu + Math.pow(mu/3, 1/3)) * systemScale;
+                    } else {
+                        baseX = (1 - mu - Math.pow(mu/3, 1/3)) * systemScale;
+                    }
+                    
+                    // Halo orbit equations (simplified)
+                    const x = baseX + amplitude * Math.cos(phase) * 0.3;
+                    const y = amplitude * Math.sin(phase);
+                    const z = amplitude * Math.cos(phase * 0.7) * 0.5;
+                    
+                    craft.position.set(x, y, z);
+                    
+                    // Update orbit trail
+                    if (showOrbits && orbits[index]) {
+                        const orbit = orbits[index];
+                        orbit.userData.points.push(new THREE.Vector3(x, y, z));
+                        
+                        // Limit trail length
+                        if (orbit.userData.points.length > 200) {
+                            orbit.userData.points.shift();
+                        }
+                        
+                        // Update geometry
+                        const positions = [];
+                        orbit.userData.points.forEach(point => {
+                            positions.push(point.x, point.y, point.z);
+                        });
+                        
+                        orbit.geometry.setAttribute('position', 
+                            new THREE.Float32BufferAttribute(positions, 3));
+                    }
+                });
+                
+                // Rotate the entire system
+                if (primaryMass && secondaryMass) {
+                    const angle = time * 0.5;
+                    primaryMass.position.x = -mu * systemScale * Math.cos(angle);
+                    primaryMass.position.z = -mu * systemScale * Math.sin(angle);
+                    secondaryMass.position.x = (1 - mu) * systemScale * Math.cos(angle);
+                    secondaryMass.position.z = (1 - mu) * systemScale * Math.sin(angle);
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Control functions
+        function setScenario(scenario) {
+            if (scenario === 'earth-moon') {
+                mu = 0.012;
+                systemScale = 2;
+                updateInfoPanel('Earth-Moon System', 
+                    'The Earth-Moon system with the Moon\'s mass being about 1.2% of Earth\'s mass. L1 and L2 are ideal for lunar missions.');
+            } else if (scenario === 'sun-earth') {
+                mu = 0.000003;
+                systemScale = 3;
+                updateInfoPanel('Sun-Earth System', 
+                    'The Sun-Earth system where Earth\'s mass is negligible compared to the Sun. JWST orbits at L2!');
+            }
+            
+            document.getElementById('mass-ratio').value = mu;
+            document.getElementById('mass-ratio-value').textContent = mu.toFixed(6);
+            
+            createMasses();
+            calculateLagrangePoints();
+            createSpacecraft();
+        }
+        
+        function toggleOrbits() {
+            showOrbits = !showOrbits;
+            orbits.forEach(orbit => {
+                orbit.visible = showOrbits;
+            });
+            if (!showOrbits) {
+                createSpacecraft(); // Recreate without orbits
+            }
+        }
+        
+        function toggleLagrangePoints() {
+            showLagrangePoints = !showLagrangePoints;
+            calculateLagrangePoints();
+        }
+        
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+        }
+        
+        function resetView() {
+            camera.position.set(0, 3, 5);
+            camera.lookAt(0, 0, 0);
+        }
+        
+        function updateInfoPanel(title, content) {
+            document.getElementById('info-title').textContent = title;
+            document.getElementById('info-content').textContent = content;
+        }
+        
+        // Mouse interaction for educational info
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        renderer.domElement.addEventListener('click', (event) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects([...lagrangePoints, ...spacecraft]);
+            
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                if (object.userData.name) {
+                    const pointName = object.userData.name;
+                    const descriptions = {
+                        'L1': 'L1 is located between the two masses. Objects here can maintain a stable position relative to both masses, useful for solar observation missions.',
+                        'L2': 'L2 is beyond the smaller mass, away from the primary. The James Webb Space Telescope operates in a halo orbit around L2 for unobstructed deep space observations.',
+                        'L3': 'L3 is on the opposite side of the primary mass. It\'s less stable and rarely used for missions due to communication challenges.',
+                        'L4': 'L4 leads the secondary mass by 60°. This point is home to Trojan asteroids in the Jupiter-Sun system and is naturally stable.',
+                        'L5': 'L5 trails the secondary mass by 60°. Like L4, it forms an equilateral triangle with the two masses and is naturally stable.'
+                    };
+                    updateInfoPanel(`Lagrange Point ${pointName}`, descriptions[pointName]);
+                }
+            }
+        });
+        
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

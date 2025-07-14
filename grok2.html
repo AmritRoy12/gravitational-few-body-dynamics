@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lagrange Points & Halo Orbits Simulation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c1e 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        
+        .main-view {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0c0c1e 100%);
+        }
+        
+        #p5-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+        
+        #p5-canvas:active {
+            cursor: grabbing;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .control-group h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #4facfe;
+            font-weight: 600;
+        }
+        
+        .control {
+            margin-bottom: 12px;
+        }
+        
+        .control label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            cursor: pointer;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 3px;
+            font-size: 11px;
+        }
+        
+        .button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
+        }
+        
+        .button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            max-width: 300px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 50;
+        }
+        
+        .info-panel h4 {
+            color: #4facfe;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .info-panel p {
+            font-size: 12px;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        
+        .legend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 10px;
+        }
+        
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .scenario-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        
+        .status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            z-index: 50;
+        }
+        
+        .guided-mode {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            max-width: 300px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 50;
+        }
+        
+        .guided-mode button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="title">Lagrange Points & Orbits</div>
+            <div class="subtitle">Interactive simulation of gravitational equilibrium points and halo orbits</div>
+            
+            <div class="control-group">
+                <h3>🌍 System</h3>
+                <div class="scenario-buttons">
+                    <button class="button" onclick="window.setScenario('earth-moon')">Earth-Moon</button>
+                    <button class="button" onclick="window.setScenario('sun-earth')">Sun-Earth</button>
+                </div>
+                <div class="control">
+                    <label>Mass Ratio (μ): <span id="mass-ratio-value">0.012</span></label>
+                    <input type="range" class="slider" id="mass-ratio" min="0.001" max="0.1" step="0.001" value="0.012">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>🛰️ Animation</h3>
+                <div class="control">
+                    <label>Speed</label>
+                    <input type="range" class="slider" id="speed" min="0.1" max="3" step="0.1" value="1">
+                </div>
+                <div class="control">
+                    <label>Halo Amplitude</label>
+                    <input type="range" class="slider" id="halo-amplitude" min="0.02" max="0.2" step="0.01" value="0.08">
+                </div>
+                <div class="control">
+                    <label>Zoom Level</label>
+                    <input type="range" class="slider" id="zoom" min="0.5" max="3" step="0.1" value="1">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>📐 Orbit Injection</h3>
+                <div class="control">
+                    <label>Initial X</label>
+                    <input type="number" class="input-field" id="init-x" value="0" step="0.01">
+                </div>
+                <div class="control">
+                    <label>Initial Y</label>
+                    <input type="number" class="input-field" id="init-y" value="0" step="0.01">
+                </div>
+                <div class="control">
+                    <label>Initial VX</label>
+                    <input type="number" class="input-field" id="init-vx" value="0" step="0.01">
+                </div>
+                <div class="control">
+                    <label>Initial VY</label>
+                    <input type="number" class="input-field" id="init-vy" value="0" step="0.01">
+                </div>
+                <div class="control">
+                    <label>Reference Frame</label>
+                    <select class="input-field" id="frame">
+                        <option value="rotating">Rotating</option>
+                        <option value="inertial">Inertial</option>
+                    </select>
+                </div>
+                <button class="button" onclick="window.launchSpacecraft()">Launch Spacecraft</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>🧭 Mission Mode</h3>
+                <div class="scenario-buttons">
+                    <button class="button" onclick="window.setMission('jwst')">JWST</button>
+                    <button class="button" onclick="window.setMission('soho')">SOHO</button>
+                    <button class="button" onclick="window.setMission('artemis')">Artemis Gateway</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>👁️ Display</h3>
+                <button class="button" onclick="window.toggleOrbits()">Toggle Trails</button>
+                <button class="button secondary" onclick="window.toggleLagrange()">Toggle L-Points</button>
+                <button class="button secondary" onclick="window.toggleZVS()">Toggle Zero-Velocity Curves</button>
+                <button class="button secondary" onclick="window.toggleAnimation()">⏯️ Pause/Play</button>
+                <button class="button secondary" onclick="window.resetView()">Reset View</button>
+                <button class="button secondary" onclick="window.toggleOrbitDesigner()">Orbit Designer</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>📦 Export</h3>
+                <button class="button" onclick="window.exportCSV()">Export CSV</button>
+                <button class="button" onclick="window.exportJSON()">Export JSON</button>
+                <button class="button" onclick="window.saveSimulation()">Save Simulation</button>
+                <button class="button" onclick="window.downloadScreenshot()">Screenshot</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎓 Learning</h3>
+                <button class="button" onclick="window.nextGuidedStep()">Start Guided Mode</button>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff4757;"></div>
+                    L1 Between
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #2ed573;"></div>
+                    L2 Beyond
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #1e90ff;"></div>
+                    L3 Opposite
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ffa502;"></div>
+                    L4 Leading
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff6348;"></div>
+                    L5 Trailing
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff3838;"></div>
+                    Spacecraft
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #00ff00;"></div>
+                    Stable Orbit
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff0000;"></div>
+                    Unstable Orbit
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-view">
+            <div id="p5-canvas"></div>
+            
+            <div class="info-panel">
+                <h4 id="info-title">Lagrange Points</h4>
+                <p id="info-content">
+                    Lagrange points are positions where gravitational forces create equilibrium for small objects. Click and drag to explore!
+                </p>
+            </div>
+            
+            <div class="status">
+                <div>FPS: <span id="fps">60</span> | Objects: <span id="objects">8</span></div>
+                <div>System: <span id="system">Earth-Moon</span> | Time: <span id="time">0.0</span>s</div>
+                <div>Jacobi Constant: <span id="jacobi-constant">0.0</span></div>
+            </div>
+            
+            <div class="guided-mode" id="guided-mode" style="display: none;">
+                <h4>Guided Learning Mode</h4>
+                <p id="guided-content">Click 'Next' to start the guided tour.</p>
+                <button class="button" onclick="window.nextGuidedStep()">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mu = 0.012;
+        let animationSpeed = 1;
+        let haloAmplitude = 0.08;
+        let zoom = 1;
+        let showOrbits = true;
+        let showLagrange = true;
+        let showZVS = false;
+        let isAnimating = true;
+        let time = 0;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let orbitDesignerActive = false;
+        let orbitPath = [];
+        let guidedMode = false;
+        let guidedStep = 0;
+        
+        const colors = {
+            primary: '#4facfe',
+            secondary: '#ffffff',
+            L1: '#ff4757',
+            L2: '#2ed573',
+            L3: '#1e90ff',
+            L4: '#ffa502',
+            L5: '#ff6348',
+            spacecraft: '#ff3838',
+            trail: '#ff383870',
+            stable: '#00ff00',
+            unstable: '#ff0000',
+            zvs: 'rgba(255, 255, 255, 0.2)'
+        };
+        
+        let spacecraft = [];
+        let lagrangePoints = [];
+        let orbits = [];
+        let customSpacecraft = [];
+        let missionSpacecraft = null;
+        let poincarePoints = [];
+
+        // p5.js sketch initialization
+        function setup() {
+            let canvas = createCanvas(windowWidth - 350, windowHeight);
+            canvas.parent('p5-canvas');
+            textSize(12);
+            textAlign(CENTER);
+            calculateLagrangePoints();
+            createSpacecraft();
+            updateInfo('Lagrange Points', 'Lagrange points are positions where gravitational forces create equilibrium for small objects. Click and drag to explore!');
+        }
+
+        function draw() {
+            background(12, 12, 30);
+            if (!isAnimating) return;
+            time += 0.02 * animationSpeed;
+
+            // Draw stars
+            fill(255);
+            for (let i = 0; i < 50; i++) {
+                const x = (Math.sin(i * 12.345) * 0.5 + 0.5) * width;
+                const y = (Math.cos(i * 67.891) * 0.5 + 0.5) * height;
+                rect(x, y, 1, 1);
+            }
+
+            // Draw zero-velocity curves
+            if (showZVS || missionSpacecraft) {
+                const C = missionSpacecraft ? calculateJacobiConstant([missionSpacecraft.x, missionSpacecraft.y, missionSpacecraft.vx, missionSpacecraft.vy]) : 3;
+                stroke(colors.zvs);
+                noFill();
+                for (let x = -2; x <= 2; x += 0.05) {
+                    for (let y = -2; y <= 2; y += 0.05) {
+                        const U = calculateEffectivePotential(x, y);
+                        if (Math.abs(U - C / 2) < 0.01) {
+                            const pos = worldToScreen(x, y);
+                            point(pos.x, pos.y);
+                        }
+                    }
+                }
+            }
+
+            // Draw orbit trails
+            if (showOrbits) {
+                orbits.forEach(orbit => {
+                    if (orbit.length > 1) {
+                        stroke(colors.trail);
+                        noFill();
+                        beginShape();
+                        orbit.forEach(p => {
+                            const pos = worldToScreen(p.x, p.y);
+                            vertex(pos.x, pos.y);
+                        });
+                        endShape();
+                    }
+                });
+                customSpacecraft.forEach(craft => {
+                    if (craft.trail.length > 1) {
+                        stroke(craft.stability);
+                        noFill();
+                        beginShape();
+                        craft.trail.forEach(p => {
+                            const pos = worldToScreen(p.x, p.y);
+                            vertex(pos.x, pos.y);
+                        });
+                        endShape();
+                    }
+                });
+                if (missionSpacecraft && missionSpacecraft.trail.length > 1) {
+                    stroke(colors.spacecraft);
+                    noFill();
+                    beginShape();
+                    missionSpacecraft.trail.forEach(p => {
+                        const pos = worldToScreen(p.x, p.y);
+                        vertex(pos.x, pos.y);
+                    });
+                    endShape();
+                }
+            }
+
+            // Draw Poincaré sections
+            if (poincarePoints.length > 0) {
+                stroke(255, 255, 0);
+                poincarePoints.forEach(p => {
+                    const pos = worldToScreen(p.x, p.y);
+                    point(pos.x, pos.y);
+                });
+            }
+
+            // Draw primary and secondary masses
+            fill(colors.primary);
+            let pos = worldToScreen(-mu, 0);
+            ellipse(pos.x, pos.y, 15);
+            text('Primary', pos.x, pos.y - 15);
+            fill(colors.secondary);
+            pos = worldToScreen(1 - mu, 0);
+            ellipse(pos.x, pos.y, 8);
+            text('Secondary', pos.x, pos.y - 15);
+
+            // Draw Lagrange points
+            if (showLagrange) {
+                lagrangePoints.forEach(point => {
+                    fill(point.color);
+                    pos = worldToScreen(point.x, point.y);
+                    ellipse(pos.x, pos.y, 5);
+                    text(point.name, pos.x, pos.y - 15);
+                });
+            }
+
+            // Update and draw spacecraft
+            spacecraft.forEach((craft, i) => {
+                const phase = craft.phase + time;
+                craft.x = craft.baseX + craft.amplitude * Math.cos(phase) * 0.3;
+                craft.y = craft.baseY + craft.amplitude * Math.sin(phase);
+                if (showOrbits) {
+                    orbits[i].push({ x: craft.x, y: craft.y });
+                    if (orbits[i].length > 100) orbits[i].shift();
+                }
+                fill(colors.spacecraft);
+                pos = worldToScreen(craft.x, craft.y);
+                ellipse(pos.x, pos.y, 3);
+            });
+
+            // Update custom spacecraft
+            customSpacecraft.forEach(craft => {
+                const frame = document.getElementById('frame') ? document.getElementById('frame').value : 'rotating';
+                let state = [craft.x, craft.y, craft.vx, craft.vy];
+                if (frame === 'rotating') {
+                    state = rk45(state, 0.01);
+                    craft.vx = state[2];
+                    craft.vy = state[3];
+                } else {
+                    const [vx, vy] = [state[2], state[3]];
+                    state[0] += vx * 0.01;
+                    state[1] += vy * 0.01;
+                }
+                craft.x = state[0];
+                craft.y = state[1];
+                craft.trail.push({ x: craft.x, y: craft.y });
+                if (craft.trail.length > 1000) craft.trail.shift();
+                craft.stability = calculateStability(state);
+                fill(craft.stability);
+                pos = worldToScreen(craft.x, craft.y);
+                ellipse(pos.x, pos.y, 3);
+            });
+
+            // Update mission spacecraft
+            if (missionSpacecraft) {
+                let state = [missionSpacecraft.x, missionSpacecraft.y, missionSpacecraft.vx, missionSpacecraft.vy];
+                state = rk45(state, 0.01);
+                missionSpacecraft.x = state[0];
+                missionSpacecraft.y = state[1];
+                missionSpacecraft.vx = state[2];
+                missionSpacecraft.vy = state[3];
+                missionSpacecraft.trail.push({ x: state[0], y: state[1] });
+                if (missionSpacecraft.trail.length > 1000) missionSpacecraft.trail.shift();
+                fill(colors.spacecraft);
+                pos = worldToScreen(state[0], state[1]);
+                ellipse(pos.x, pos.y, 5);
+                if (document.getElementById('jacobi-constant')) {
+                    document.getElementById('jacobi-constant').textContent = calculateJacobiConstant(state).toFixed(3);
+                }
+            }
+
+            // Update UI
+            if (document.getElementById('time')) {
+                document.getElementById('time').textContent = time.toFixed(1);
+            }
+            if (document.getElementById('objects')) {
+                document.getElementById('objects').textContent = (spacecraft.length + lagrangePoints.length + customSpacecraft.length + (missionSpacecraft ? 1 : 0) + 2);
+            }
+            if (document.getElementById('fps')) {
+                document.getElementById('fps').textContent = Math.round(frameRate());
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth - 350, windowHeight);
+        }
+
+        function calculateLagrangePoints() {
+            lagrangePoints = [];
+            const L1x = 1 - mu - Math.pow(mu / 3, 1 / 3);
+            const L2x = 1 - mu + Math.pow(mu / 3, 1 / 3);
+            const L3x = -mu - 1 + 5 * mu / 12;
+            const L4x = 0.5 - mu;
+            const L4y = Math.sqrt(3) / 2;
+            const L5x = 0.5 - mu;
+            const L5y = -Math.sqrt(3) / 2;
+            
+            lagrangePoints = [
+                { name: 'L1', x: L1x, y: 0, color: colors.L1 },
+                { name: 'L2', x: L2x, y: 0, color: colors.L2 },
+                { name: 'L3', x: L3x, y: 0, color: colors.L3 },
+                { name: 'L4', x: L4x, y: L4y, color: colors.L4 },
+                { name: 'L5', x: L5x, y: L5y, color: colors.L5 }
+            ];
+        }
+
+        function createSpacecraft() {
+            spacecraft = [];
+            orbits = [];
+            for (let i = 0; i < 3; i++) {
+                const lagrangePoint = i % 2 === 0 ? 'L2' : 'L1';
+                const lp = lagrangePoints.find(p => p.name === lagrangePoint);
+                spacecraft.push({
+                    x: lp.x,
+                    y: lp.y,
+                    baseX: lp.x,
+                    baseY: lp.y,
+                    phase: (i / 3) * Math.PI * 2,
+                    amplitude: haloAmplitude * (0.7 + Math.random() * 0.6),
+                    lagrangePoint: lagrangePoint
+                });
+                orbits.push([]);
+            }
+        }
+
+        function CR3BP(state, t) {
+            const [x, y, vx, vy] = state;
+            const r1 = Math.sqrt((x + mu) ** 2 + y ** 2);
+            const r2 = Math.sqrt((x - 1 + mu) ** 2 + y ** 2);
+            const omega = 1;
+            const ax = 2 * vy + x - (1 - mu) * (x + mu) / (r1 ** 3) - mu * (x - 1 + mu) / (r2 ** 3);
+            const ay = -2 * vx + y - (1 - mu) * y / (r1 ** 3) - mu * y / (r2 ** 3);
+            return [vx, vy, ax, ay];
+        }
+
+        function rk45(state, dt) {
+            const k1 = CR3BP(state, 0);
+            const k2 = CR3BP(state.map((s, i) => s + dt * k1[i] / 2), dt / 2);
+            const k3 = CR3BP(state.map((s, i) => s + dt * k2[i] / 2), dt / 2);
+            const k4 = CR3BP(state.map((s, i) => s + dt * k3[i]), dt);
+            return state.map((s, i) => s + (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+        }
+
+        function calculateJacobiConstant(state) {
+            const [x, y, vx, vy] = state;
+            const r1 = Math.sqrt((x + mu) ** 2 + y ** 2);
+            const r2 = Math.sqrt((x - 1 + mu) ** 2 + y ** 2);
+            const v2 = vx ** 2 + vy ** 2;
+            return x ** 2 + y ** 2 + 2 * (1 - mu) / r1 + 2 * mu / r2 - v2;
+        }
+
+        function calculateEffectivePotential(x, y) {
+            const r1 = Math.sqrt((x + mu) ** 2 + y ** 2);
+            const r2 = Math.sqrt((x - 1 + mu) ** 2 + y ** 2);
+            return 0.5 * (x ** 2 + y ** 2) + (1 - mu) / r1 + mu / r2;
+        }
+
+        function calculateStability(state) {
+            const C = calculateJacobiConstant(state);
+            const l1C = calculateJacobiConstant([lagrangePoints[0].x, 0, 0, 0]);
+            return Math.abs(C - l1C) < 0.1 ? colors.stable : colors.unstable;
+        }
+
+        function worldToScreen(x, y) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const scale = 200 * zoom;
+            return createVector(centerX + (x * scale) + offsetX, centerY + (y * scale) + offsetY);
+        }
+
+        function screenToWorld(x, y) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const scale = 200 * zoom;
+            return createVector((x - centerX - offsetX) / scale, (y - centerY - offsetY) / scale);
+        }
+
+        function mousePressed() {
+            if (orbitDesignerActive) {
+                orbitPath = [];
+                const pos = screenToWorld(mouseX, mouseY);
+                orbitPath.push(pos);
+            } else {
+                isDragging = true;
+                lastMouseX = mouseX;
+                lastMouseY = mouseY;
+            }
+        }
+
+        function mouseDragged() {
+            if (orbitDesignerActive) {
+                const pos = screenToWorld(mouseX, mouseY);
+                orbitPath.push(pos);
+            } else if (isDragging) {
+                offsetX += (mouseX - lastMouseX);
+                offsetY += (mouseY - lastMouseY);
+                lastMouseX = mouseX;
+                lastMouseY = mouseY;
+            }
+        }
+
+        function mouseReleased() {
+            if (orbitDesignerActive && orbitPath.length > 1) {
+                const state = [orbitPath[0].x, orbitPath[0].y, 0, 0];
+                const stability = calculateStability(state);
+                customSpacecraft.push({
+                    x: orbitPath[0].x,
+                    y: orbitPath[0].y,
+                    vx: 0,
+                    vy: 0,
+                    trail: orbitPath,
+                    stability: stability
+                });
+                poincarePoints.push(orbitPath[0]);
+            }
+            isDragging = false;
+        }
+
+        function mouseWheel(event) {
+            event.preventDefault();
+            const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+            zoom *= zoomFactor;
+            zoom = Math.max(0.1, Math.min(5, zoom));
+            if (document.getElementById('zoom')) {
+                document.getElementById('zoom').value = zoom;
+            }
+        }
+
+        // Control functions (exposed globally)
+        window.setScenario = function(scenario) {
+            if (scenario === 'earth-moon') {
+                mu = 0.012;
+                if (document.getElementById('system')) {
+                    document.getElementById('system').textContent = 'Earth-Moon';
+                }
+                updateInfo('Earth-Moon System', 'L1 and L2 are ideal for lunar missions and deep space observation.');
+            } else if (scenario === 'sun-earth') {
+                mu = 0.000003;
+                if (document.getElementById('system')) {
+                    document.getElementById('system').textContent = 'Sun-Earth';
+                }
+                updateInfo('Sun-Earth System', 'JWST orbits at L2 for unobstructed views of deep space.');
+            }
+            if (document.getElementById('mass-ratio')) {
+                document.getElementById('mass-ratio').value = mu;
+            }
+            if (document.getElementById('mass-ratio-value')) {
+                document.getElementById('mass-ratio-value').textContent = mu.toFixed(6);
+            }
+            calculateLagrangePoints();
+            createSpacecraft();
+            customSpacecraft = [];
+            missionSpacecraft = null;
+        };
+
+        window.setMission = function(mission) {
+            customSpacecraft = [];
+            if (mission === 'jwst') {
+                window.setScenario('sun-earth');
+                missionSpacecraft = {
+                    x: lagrangePoints[1].x,
+                    y: 0,
+                    vx: 0,
+                    vy: 0.1,
+                    trail: []
+                };
+                updateInfo('JWST Mission', 'James Webb Space Telescope orbits Sun-Earth L2 in a halo orbit.');
+            } else if (mission === 'soho') {
+                window.setScenario('sun-earth');
+                missionSpacecraft = {
+                    x: lagrangePoints[0].x,
+                    y: 0,
+                    vx: 0,
+                    vy: 0.05,
+                    trail: []
+                };
+                updateInfo('SOHO Mission', 'SOHO orbits Sun-Earth L1 for solar observation.');
+            } else if (mission === 'artemis') {
+                window.setScenario('earth-moon');
+                missionSpacecraft = {
+                    x: lagrangePoints[1].x,
+                    y: 0,
+                    vx: 0,
+                    vy: 0.08,
+                    trail: []
+                };
+                updateInfo('Artemis Gateway', 'Near-Rectilinear Halo Orbit (NRHO) around Earth-Moon L2.');
+            }
+        };
+
+        window.launchSpacecraft = function() {
+            const x = document.getElementById('init-x') ? parseFloat(document.getElementById('init-x').value) : 0;
+            const y = document.getElementById('init-y') ? parseFloat(document.getElementById('init-y').value) : 0;
+            const vx = document.getElementById('init-vx') ? parseFloat(document.getElementById('init-vx').value) : 0;
+            const vy = document.getElementById('init-vy') ? parseFloat(document.getElementById('init-vy').value) : 0;
+            customSpacecraft.push({
+                x, y, vx, vy,
+                trail: [],
+                stability: calculateStability([x, y, vx, vy])
+            });
+            poincarePoints.push({ x, y });
+        };
+
+        window.toggleOrbits = function() {
+            showOrbits = !showOrbits;
+            if (!showOrbits) {
+                orbits.forEach(orbit => orbit.length = 0);
+                customSpacecraft.forEach(craft => craft.trail = []);
+                if (missionSpacecraft) missionSpacecraft.trail = [];
+            }
+        };
+
+        window.toggleLagrange = function() {
+            showLagrange = !showLagrange;
+        };
+
+        window.toggleZVS = function() {
+            showZVS = !showZVS;
+        };
+
+        window.toggleAnimation = function() {
+            isAnimating = !isAnimating;
+        };
+
+        window.toggleOrbitDesigner = function() {
+            orbitDesignerActive = !orbitDesignerActive;
+            orbitPath = [];
+        };
+
+        window.updateInfo = function(title, content) {
+            if (document.getElementById('info-title')) {
+                document.getElementById('info-title').textContent = title;
+            }
+            if (document.getElementById('info-content')) {
+                document.getElementById('info-content').textContent = content;
+            }
+        };
+
+        window.exportCSV = function() {
+            let csv = 'x,y,vx,vy,stability\n';
+            customSpacecraft.forEach(craft => {
+                csv += `${craft.x},${craft.y},${craft.vx},${craft.vy},${craft.stability}\n`;
+            });
+            if (missionSpacecraft) {
+                csv += `${missionSpacecraft.x},${missionSpacecraft.y},${missionSpacecraft.vx},${missionSpacecraft.vy},${colors.spacecraft}\n`;
+            }
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'orbits.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        window.exportJSON = function() {
+            const data = {
+                spacecraft: customSpacecraft,
+                mission: missionSpacecraft
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'orbits.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        window.saveSimulation = function() {
+            const state = {
+                mu, animationSpeed, haloAmplitude, zoom, showOrbits, showLagrange, showZVS,
+                spacecraft, customSpacecraft, missionSpacecraft, offsetX, offsetY
+            };
+            const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'simulation.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        window.downloadScreenshot = function() {
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'simulation.png';
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        window.resetView = function() {
+            offsetX = 0;
+            offsetY = 0;
+            zoom = 1;
+            if (document.getElementById('zoom')) {
+                document.getElementById('zoom').value = zoom;
+            }
+        };
+
+        window.nextGuidedStep = function() {
+            guidedMode = true;
+            if (document.getElementById('guided-mode')) {
+                document.getElementById('guided-mode').style.display = 'block';
+            }
+            const steps = [
+                {
+                    title: 'Lagrange Points',
+                    content: 'Lagrange points are positions where the gravitational forces of two bodies balance the centripetal force required for a small object to move with them.'
+                },
+                {
+                    title: 'Halo Orbits',
+                    content: 'Halo orbits are periodic orbits around Lagrange points, often used for space missions like JWST and Artemis Gateway.'
+                },
+                {
+                    title: 'Zero-Velocity Surfaces',
+                    content: 'Zero-velocity surfaces show regions where motion is energetically forbidden, based on the Jacobi constant.'
+                },
+                {
+                    title: 'Mission Applications',
+                    content: 'L1 and L2 are used for solar observation (SOHO) and deep space telescopes (JWST). L4 and L5 are stable for long-term missions.'
+                }
+            ];
+            if (guidedStep >= steps.length) {
+                guidedMode = false;
+                guidedStep = 0;
+                if (document.getElementById('guided-mode')) {
+                    document.getElementById('guided-mode').style.display = 'none';
+                }
+                return;
+            }
+            window.updateInfo(steps[guidedStep].title, steps[guidedStep].content);
+            if (document.getElementById('guided-content')) {
+                document.getElementById('guided-content').textContent = steps[guidedStep].content;
+            }
+            guidedStep++;
+        };
+
+        // Setup event listeners after DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            const massRatioInput = document.getElementById('mass-ratio');
+            const speedInput = document.getElementById('speed');
+            const haloAmplitudeInput = document.getElementById('halo-amplitude');
+            const zoomInput = document.getElementById('zoom');
+
+            if (massRatioInput) {
+                massRatioInput.addEventListener('input', (e) => {
+                    mu = parseFloat(e.target.value);
+                    if (document.getElementById('mass-ratio-value')) {
+                        document.getElementById('mass-ratio-value').textContent = mu.toFixed(3);
+                    }
+                    calculateLagrangePoints();
+                    createSpacecraft();
+                    customSpacecraft = [];
+                    missionSpacecraft = null;
+                });
+            }
+
+            if (speedInput) {
+                speedInput.addEventListener('input', (e) => {
+                    animationSpeed = parseFloat(e.target.value);
+                });
+            }
+
+            if (haloAmplitudeInput) {
+                haloAmplitudeInput.addEventListener('input', (e) => {
+                    haloAmplitude = parseFloat(e.target.value);
+                    createSpacecraft();
+                });
+            }
+
+            if (zoomInput) {
+                zoomInput.addEventListener('input', (e) => {
+                    zoom = parseFloat(e.target.value);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
